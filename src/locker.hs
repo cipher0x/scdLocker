@@ -88,10 +88,9 @@ main = do
     forever $ do
         received <- receive sock
         if isActiveChangedSignal received then
-            if getActiveChangedSignal received then do 
-                putStrLn "Screen Locked"
-                system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye"  >>= \exitCode -> print exitCode
-            else putStrLn "Screen Unlocked"
+            if getActiveChangedSignal received then 
+                system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStr ""
+            else return ()
         else return ()
 
 --find sub string in string
