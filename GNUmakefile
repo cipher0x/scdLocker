@@ -6,5 +6,6 @@ build/scdLocker: src/locker.hs
 
 install: build/scdLocker
 	cp build/scdLocker ~/bin/
+	strip ~/bin/scdLocker
 clean:
 	rm -rf build
