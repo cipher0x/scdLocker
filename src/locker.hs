@@ -16,25 +16,13 @@ import System.Console.GetOpt
 import System.Process
 import DBus
 import DBus.Socket
+import System.Command
 
 data Bus = Session | System
     deriving (Show)
 
 data Option = BusOption Bus | AddressOption String
     deriving (Show)
-
-optionInfo :: [OptDescr Option]
-optionInfo = [
-      Option [] ["session"] (NoArg (BusOption Session))
-             "Monitor the session message bus. (default)"
-    , Option [] ["system"] (NoArg (BusOption System))
-             "Monitor the system message bus."
-    , Option [] ["address"] (ReqArg AddressOption "ADDRESS")
-             "Connect to a particular bus address."
-    ]
-
-usage :: String -> String
-usage name = "Usage: " ++ name ++ " [OPTION...]"
 
 findSocket :: [Option] -> IO Socket
 findSocket opts = getAddress opts >>= open where
@@ -63,33 +51,31 @@ addMatch sock match = send sock (methodCall "/org/freedesktop/DBus" "org.freedes
     , methodCallBody = [toVariant match]
     } (\_ -> return ())
 
-screenSaverFilter :: [String]
-screenSaverFilter =
-    [ "type='signal',interface='org.freedesktop.ScreenSaver'"]
-
+isSCDRunning :: IO Bool
+isSCDRunning = do
+    Stdout rst <- command [] "gpg-connect-agent" ["scd getinfo card_list","/bye 2>/dev/null"]
+    let parsedRst = lines rst
+    if parsedRst!!0 == "OK" then return False else return True
+    
 main :: IO ()
 main = do
-    args <- getArgs
-    let (options, userFilters, errors) = getOpt Permute optionInfo args
-    let screenSaver = "org.freedesktop.ScreenSaver" 
-    unless (null errors) $ do
-        name <- getProgName
-        hPutStrLn stderr (concat errors)
-        hPutStrLn stderr (usageInfo (usage name) optionInfo)
-        exitFailure
-    
-    sock <- findSocket options
+    sock <- findSocket [(BusOption Session)]
     
     send sock (methodCall "/org/freedesktop/DBus" "org.freedesktop.DBus" "Hello")
         { methodCallDestination = Just "org.freedesktop.DBus"
         } (\_ -> return ())
-    mapM_ (addMatch sock ) (screenSaverFilter) 
+    
+    addMatch sock  "type='signal',interface='org.freedesktop.ScreenSaver'"
     
     forever $ do
         received <- receive sock
+        scdRunning <- isSCDRunning
+
         if isActiveChangedSignal received then
-            if getActiveChangedSignal received then 
-                system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStr ""
+            if getActiveChangedSignal received then
+                if scdRunning then
+                    system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStr ""
+                else return ()
             else return ()
         else return ()
 
