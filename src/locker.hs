@@ -56,28 +56,6 @@ isSCDRunning = do
     Stdout rst <- command [] "gpg-connect-agent" ["scd getinfo card_list","/bye 2>/dev/null"]
     let parsedRst = lines rst
     if parsedRst!!0 == "OK" then return False else return True
-    
-main :: IO ()
-main = do
-    sock <- findSocket [(BusOption Session)]
-    
-    send sock (methodCall "/org/freedesktop/DBus" "org.freedesktop.DBus" "Hello")
-        { methodCallDestination = Just "org.freedesktop.DBus"
-        } (\_ -> return ())
-    
-    addMatch sock  "type='signal',interface='org.freedesktop.ScreenSaver'"
-    
-    forever $ do
-        received <- receive sock
-        scdRunning <- isSCDRunning
-
-        if isActiveChangedSignal received then
-            if getActiveChangedSignal received then
-                if scdRunning then
-                    system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStr ""
-                else return ()
-            else return ()
-        else return ()
 
 --find sub string in string
 find_string :: (Eq a) => [a] -> [a] -> Int
@@ -202,3 +180,26 @@ formatVariant x = case variantType x of
         Just x' = fromVariant x
         in MultiLine [Line "variant", Children [formatVariant x']]
 
+
+--entry point
+main :: IO ()
+main = do
+    sock <- findSocket [(BusOption Session)]
+    
+    send sock (methodCall "/org/freedesktop/DBus" "org.freedesktop.DBus" "Hello")
+        { methodCallDestination = Just "org.freedesktop.DBus"
+        } (\_ -> return ())
+    
+    addMatch sock  "type='signal',interface='org.freedesktop.ScreenSaver'"
+    
+    forever $ do
+        received <- receive sock
+        scdRunning <- isSCDRunning
+
+        if isActiveChangedSignal received then
+            if getActiveChangedSignal received then
+                if scdRunning then
+                    system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStr ""
+                else return ()
+            else return ()
+        else return ()
