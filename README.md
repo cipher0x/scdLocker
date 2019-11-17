@@ -16,3 +16,7 @@
 ### Haskell dbus library
  - cabal update
  - cabal install dbus
+ 
+### Haskell command library
+ - cabal update
+ - cabal install command
