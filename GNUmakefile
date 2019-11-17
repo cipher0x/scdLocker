@@ -6,7 +6,7 @@ build/scdLocker: src/locker.hs
 
 install: build/scdLocker
 	cp build/scdLocker /usr/bin
-	cp systemd/scd_locker /usr/lib/systemd/user
+	cp systemd/scd_locker.service /usr/lib/systemd/user
 	strip /usr/bin/scdLocker
 clean:
 	rm -rf build

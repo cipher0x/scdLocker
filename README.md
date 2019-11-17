@@ -20,3 +20,12 @@
 ### Haskell command library
  - cabal update
  - cabal install command
+
+ ## Build and Install
+ - make 
+ - sudo make install
+ 
+ ## Setup scd_locker systemd user service
+ - systemctl --user daemon-reload
+ - systemctl --user enable scd_locker
+ - systemctl --user start scd_locker
