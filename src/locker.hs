@@ -31,13 +31,13 @@ findSocket opts = getAddress opts >>= open where
         case got of
             Just addr -> return addr
             Nothing -> error "DBUS_SESSION_BUS_ADDRESS is not a valid address"
-    
+
     system = do
         got <- getSystemAddress
         case got of
             Just addr -> return addr
             Nothing -> error "DBUS_SYSTEM_BUS_ADDRESS is not a valid address"
-    
+
     getAddress [] = session
     getAddress ((BusOption Session):_) = session
     getAddress ((BusOption System):_) = system
@@ -63,9 +63,9 @@ find_string search str = fromMaybe (-1) $ findIndex (isPrefixOf search) (tails s
 
 -- checks for ActiveChangedSignal Type
 isActiveChangedSignal:: ReceivedMessage -> Bool
-isActiveChangedSignal (ReceivedSignal serial msg) = 
-    if formatMemberName (signalMember msg) == "ActiveChanged" 
-        then True 
+isActiveChangedSignal (ReceivedSignal serial msg) =
+    if formatMemberName (signalMember msg) == "ActiveChanged"
+        then True
         else False
 
 isActiveChangedSignal msg = False
@@ -94,55 +94,55 @@ collapseTree d (Children xs)  = concatMap (collapseTree (d + 1)) xs
 -- Formatting for various kinds of variants, keyed to their signature type.
 formatVariant :: Variant -> StringTree
 formatVariant x = case variantType x of
-    
+
     TypeBoolean -> Line $ let
         Just x' = fromVariant x
         in "boolean " ++ if x' then "true" else "false"
-    
+
     TypeWord8 -> Line $ let
         Just x' = fromVariant x
         in "byte " ++ show (x' :: Word8)
-    
+
     TypeWord16 -> Line $ let
         Just x' = fromVariant x
         in "uint16 " ++ show (x' :: Word16)
-    
+
     TypeWord32 -> Line $ let
         Just x' = fromVariant x
         in "uint32 " ++ show (x' :: Word32)
-    
+
     TypeWord64 -> Line $ let
         Just x' = fromVariant x
         in "uint64 " ++ show (x' :: Word64)
-    
+
     TypeInt16 -> Line $ let
         Just x' = fromVariant x
         in "int16 " ++ show (x' :: Int16)
-    
+
     TypeInt32 -> Line $ let
         Just x' = fromVariant x
         in "int32 " ++ show (x' :: Int32)
-    
+
     TypeInt64 -> Line $ let
         Just x' = fromVariant x
         in "int64 " ++ show (x' :: Int64)
-    
+
     TypeDouble -> Line $ let
         Just x' = fromVariant x
         in "double " ++ show (x' :: Double)
-    
+
     TypeString -> Line $ let
         Just x' = fromVariant x
         in "string " ++ show (x' :: String)
-    
+
     TypeObjectPath -> Line $ let
         Just x' = fromVariant x
         in "object path " ++ show (formatObjectPath x')
-    
+
     TypeSignature -> Line $ let
         Just x' = fromVariant x
         in "signature " ++ show (formatSignature x')
-    
+
     TypeArray _ -> MultiLine $ let
         Just x' = fromVariant x
         items = arrayItems x'
@@ -151,7 +151,7 @@ formatVariant x = case variantType x of
                  , Line "]"
                  ]
         in lines'
-    
+
     TypeDictionary _ _ -> MultiLine $ let
         Just x' = fromVariant x
         items = dictionaryItems x'
@@ -166,7 +166,7 @@ formatVariant x = case variantType x of
             vTail = map Line (tail v')
             firstLine = Line (k' ++ " -> " ++ vHead)
         in lines'
-    
+
     TypeStructure _ -> MultiLine $ let
         Just x' = fromVariant x
         items = structureItems x'
@@ -175,7 +175,7 @@ formatVariant x = case variantType x of
                  , Line ")"
                  ]
         in lines'
-    
+
     TypeVariant -> let
         Just x' = fromVariant x
         in MultiLine [Line "variant", Children [formatVariant x']]
@@ -184,14 +184,15 @@ formatVariant x = case variantType x of
 --entry point
 main :: IO ()
 main = do
+    putStrLn "Connecting to DBus"
     sock <- findSocket [(BusOption Session)]
-    
     send sock (methodCall "/org/freedesktop/DBus" "org.freedesktop.DBus" "Hello")
         { methodCallDestination = Just "org.freedesktop.DBus"
         } (\_ -> return ())
-    
+
     addMatch sock  "type='signal',interface='org.freedesktop.ScreenSaver'"
-    
+
+    putStrLn "Listing for Screen Lock"
     forever $ do
         received <- receive sock
         scdRunning <- isSCDRunning
@@ -199,7 +200,7 @@ main = do
         if isActiveChangedSignal received then
             if getActiveChangedSignal received then
                 if scdRunning then
-                    system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStr ""
+                    system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStrLn "GPG-Agent Stoped"
                 else return ()
             else return ()
         else return ()
