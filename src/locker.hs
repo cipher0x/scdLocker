@@ -4,6 +4,7 @@
 module Main (main) where
 
 import Control.Monad
+import Control.Concurrent.Thread.Delay
 import Data.List (intercalate)
 import Data.Int
 import Data.Word
@@ -56,6 +57,16 @@ isSCDRunning = do
     Stdout rst <- command [] "gpg-connect-agent" ["scd getinfo card_list","/bye 2>/dev/null"]
     let parsedRst = lines rst
     if parsedRst!!0 == "OK" then return False else return True
+
+killSCD :: IO ()
+killSCD = do
+    scdRunning <- isSCDRunning
+    if scdRunning then do
+      system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null" >>= \exitCode -> putStr "Sent SCD KILLSCD\n"
+      delay 2500000
+      killSCD
+    else
+        return ()
 
 --find sub string in string
 find_string :: (Eq a) => [a] -> [a] -> Int
@@ -199,8 +210,9 @@ main = do
 
         if isActiveChangedSignal received then
             if getActiveChangedSignal received then
-                if scdRunning then
-                    system "gpg-connect-agent \"SCD KILLSCD\" \"SCD BYE\" /bye 2>&1 >> /dev/null"  >>= \exitCode -> putStrLn "GPG-Agent Stoped"
+                if scdRunning then do
+                    killSCD
+                    putStrLn "Deauthed SCD"
                 else return ()
             else return ()
         else return ()
