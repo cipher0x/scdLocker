@@ -20,7 +20,11 @@
 ### Haskell command library
  - cabal update
  - cabal install command
-
+ 
+### Haskell Concurrent Extra
+ - cabal update
+ - cabal install concurrent-extra
+ 
  ## Build and Install
  - make 
  - sudo make install
