@@ -6,7 +6,7 @@ module Main (main) where
 import Control.Monad
 import Control.Concurrent.Thread.Delay
 import Control.Concurrent (forkIO)
-import Control.Concurrent.MVar (newEmptyMVar, takeMVar, putMVar)
+import Control.Concurrent.MVar (newEmptyMVar, takeMVar, putMVar, isEmptyMVar)
 import Data.List (intercalate)
 import Data.Int
 import Data.Word
@@ -223,8 +223,26 @@ main = do
         if isActiveChangedSignal received then
             if getActiveChangedSignal received then
                 if scdRunning then do
+                  putStrLn "Recived Klocker Screen Lock Signal"
+                  --8 second grace period
+                  delay 8000000
+                  received <- takeMVar frkDbusRcv --read second DBus Lock Message
+                  isRecivedEmpty <- isEmptyMVar frkDbusRcv --check for any other DBus Lock messages
+                  if isRecivedEmpty then do
                     killSCD
                     putStrLn "Deauthed SCD"
+                  else do --ensure klocker sent unlock
+                    received <- takeMVar frkDbusRcv
+                    if isActiveChangedSignal received then
+                      if not $ getActiveChangedSignal received then do
+                        putStrLn "Recived Klocker Screen Un-Lock Signal"
+                        putStrLn "Did not Deauth SCD, klocker unlocked before end of grace period, 8s"
+                      else do -- if somehow klocker signal is still true here
+                        killSCD
+                        putStrLn "Deauthed SCD"
+                    else do --if not a klocker activate changed signal
+                      killSCD
+                      putStrLn "Deauthed SCD"
                 else return ()
             else return ()
         else return ()
