@@ -5,6 +5,8 @@ module Main (main) where
 
 import Control.Monad
 import Control.Concurrent.Thread.Delay
+import Control.Concurrent (forkIO)
+import Control.Concurrent.MVar (newEmptyMVar, takeMVar, putMVar)
 import Data.List (intercalate)
 import Data.Int
 import Data.Word
@@ -203,9 +205,19 @@ main = do
 
     addMatch sock  "type='signal',interface='org.freedesktop.ScreenSaver'"
 
+    --dbus com thread
+    putStrLn "Starting Thread for DBus COMM"
+    frkDbusRcv <- newEmptyMVar
+    forkIO (do
+    forever $ do
+      rcvdRslt <- receive sock
+      putMVar frkDbusRcv rcvdRslt)
+    --dbus com thread end
+
     putStrLn "Listing for Screen Lock"
     forever $ do
-        received <- receive sock
+        --received <- receive sock
+        received <- takeMVar frkDbusRcv
         scdRunning <- isSCDRunning
 
         if isActiveChangedSignal received then
